@@ -16,16 +16,16 @@ void hexToBin(char *inputHex, char *outputBin) {
 	while ('\0' != inputHex[i]) {
 		const char *p = strchr(digits, tolower(inputHex[i]));
 		if (p)
-			strcat_s(outputBin, 33, binary[p-digits]);
+			strcat_s(outputBin, 33, binary[p - digits]);
 		i++;
-		}
 	}
+}
 
 
-	int main() {
-		char binary[33] = "";
-		hexToBin("abdf392a", binary);
-		printf("%s\n", binary);
-		printf("%s\n", "10101011110111110011100100101010");
-		return 0;
-	}
+int main() {
+	char binary[33] = "";
+	hexToBin("abdf392a", binary);
+	printf("%s\n", binary);
+	printf("%s\n", "10101011110111110011100100101010");
+	return 0;
+}
