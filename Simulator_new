@@ -1,0 +1,272 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include <ctype.h>
+#define MAX_LINE 10//because fgets end at n-1 and in the end of each line of 8digits we also have '0'
+#define MAX_FILE 65536//CHANGE for our project:4096
+
+
+int Opcode_Operation(int opcode, int rd, int rs, int rt, char immediate_char[], int *rege, long pc, FILE *file, char output[][9]) {
+	int imm = (int)strtol(immediate_char, NULL, 16), MEM, pc_help;
+	char *line2, LINES[MAX_LINE];
+	line2 = LINES;//CHANGE - opcodes are diffrent
+	if (opcode == 0) { //ADD instruction
+		rege[rd] = rege[rs] + rege[rt];
+		if (rd == 0)//because we cant write to R0
+			rege[rd] = 0;
+		pc += 1;
+	}
+	if (opcode == 1) { //SUB instruction
+		rege[rd] = rege[rs] - rege[rt];
+		if (rd == 0)
+			rege[rd] = 0;
+		pc += 1;
+	}
+	if (opcode == 2) {//and instruction
+		rege[rd] = (rege[rs] & rege[rt]);
+		if (rd == 0)
+			rege[rd] = 0;
+		pc += 1;
+	}
+	if (opcode == 3) { //or instruction
+		rege[rd] = (rege[rs] | rege[rt]);
+		if (rd == 0)
+			rege[rd] = 0;
+		pc += 1;
+	}
+	if (opcode == 4) { //sll instruction
+		rege[rd] = (rege[rs] << rege[rt]);
+		if (rd == 0)
+			rege[rd] = 0;
+		pc += 1;
+	}
+	if (opcode == 5) { //sra instruction
+		rege[rd] = (rege[rs] >> rege[rt]);
+		if (rd == 0)
+			rege[rd] = 0;
+		pc += 1;
+	}
+	if (opcode == 6) { //Delete! limm instruction 
+		char fourthbit = immediate_char[0];
+		if (fourthbit == '8' || fourthbit == '9' || fourthbit == 'A' || fourthbit == 'a' || fourthbit == 'B' || fourthbit == 'b' || fourthbit == 'C' || fourthbit == 'c' || fourthbit == 'D' || fourthbit == 'd' || fourthbit == 'E' || fourthbit == 'e' || fourthbit == 'F' || fourthbit == 'f')
+			rege[rd] = 0xffff0000 | imm;
+		else
+			rege[rd] = 0x00000000 | imm;
+		if (rd == 0)
+			rege[rd] = 0;
+		pc += 1;
+	}
+	if (opcode == 7) {//beq instruction
+		if (rege[rs] == rege[rt]) {
+			pc = imm;
+			pc_help = pc;
+			fseek(file, 0, SEEK_SET);
+			while (pc_help > 0) {
+				fgets(line2, MAX_LINE, file);
+				pc_help -= 1;
+			}
+		}
+		else
+			pc += 1;
+	}
+	if (opcode == 8) { //bgt instruction
+		if (rege[rs] > rege[rt]) {
+			pc = imm;
+			pc_help = pc;
+			fseek(file, 0, SEEK_SET);
+			while (pc_help > 0) {
+				fgets(line2, MAX_LINE, file);
+				pc_help -= 1;
+			}
+		}
+		else
+			pc += 1;
+	}
+
+	if (opcode == 9) { //ble instruction
+		if (rege[rs] <= rege[rt]) {
+			pc = imm;
+			pc_help = pc;
+			fseek(file, 0, SEEK_SET);
+			while (pc_help >= 0) {
+				fgets(line2, MAX_LINE, file);
+				pc_help -= 1;
+			}
+		}
+		else
+			pc += 1;
+	}
+	if (opcode == 10) {	//bne instruction
+		if (rege[rs] != rege[rt]) {
+			pc = imm;
+			pc_help = pc;
+			fseek(file, 0, SEEK_SET);
+			while (pc_help > 0) {
+				fgets(line2, MAX_LINE, file);
+				pc_help -= 1;
+			}
+		}
+		else
+			pc += 1;
+	}
+
+	if (opcode == 11) {	//jal instruction
+		rege[15] = pc + 1;
+		pc = imm;
+		pc_help = pc;
+		fseek(file, 0, SEEK_SET);
+		while (pc_help > 0) {
+			fgets(line2, MAX_LINE, file);
+			pc_help -= 1;
+		}
+	}
+	if (opcode == 12) {	//lw instruction
+		int lines = rege[rs] + imm;
+		strcpy(line2, output[lines]);
+		MEM = (int)strtol(line2, NULL, 16);
+		rege[rd] = MEM;
+		if (rd == 0)
+			rege[rd] = 0;
+		pc += 1;
+	}
+
+	if (opcode == 13) { //sw instruction
+		char hexval[9];
+		int lines = rege[rs] + imm;
+		sprintf(hexval, "%08X", rege[rd]);
+		output[lines][0] = hexval[0];
+		output[lines][1] = hexval[1];
+		output[lines][2] = hexval[2];
+		output[lines][3] = hexval[3];
+		output[lines][4] = hexval[4];
+		output[lines][5] = hexval[5];
+		output[lines][6] = hexval[6];
+		output[lines][7] = hexval[7];
+		output[lines][8] = hexval[8];
+		pc += 1;
+	}
+	if (opcode == 14) { //jr instruction
+		pc = rege[rd];
+		pc_help = pc;
+		fseek(file, 0, SEEK_SET);
+		while (pc_help > 0) {
+			fgets(line2, MAX_LINE, file);
+			pc_help -= 1;
+		}
+	}
+	return pc;
+}
+
+int StrTol(char c) {//CHANGE,this func take a digit of hex and return decimal.we have diffrent opcode 
+	if (c >= '0'&&c <= '9')
+		return (int)c - 48;
+	if (c == 'a' || c == 'A')
+		return 10;
+	if (c == 'b' || c == 'B')
+		return 11;
+	if (c == 'c' || c == 'C')
+		return 12;
+	if (c == 'd' || c == 'D')
+		return 13;
+	if (c == 'e' || c == 'E')
+		return 14;
+	if (c == 'f' || c == 'F')
+		return 15;
+}
+
+Print_To_Trace(FILE *trace, int pc, char *line, int Reg_Array[]) {
+	char hexval[9], instruction[8], *inst = instruction;
+	sprintf(hexval, "%08X", pc);
+	fputs(hexval, trace);
+	putc(' ', trace);
+	inst = strtok(line, "\n");
+	fputs(inst, trace);
+	putc(' ', trace);
+	for (int i = 0; i <= 15; i++) {
+		sprintf(hexval, "%08X", Reg_Array[i]);
+		fputs(hexval, trace);
+		putc(' ', trace);
+	}
+	putc('\n', trace);
+}
+
+Print_To_Files(FILE *mem_out, FILE *regout, FILE *trace, FILE *PCcount, char output[][9], int count, int Reg_Array[]) {
+	int i = MAX_FILE - 2, j = 0;
+	char regoutchar[9];
+	while (strcmp(output[i], "00000000") == 0)
+		i -= 1;
+	while (j <= i) {
+		fputs(output[j], mem_out);
+		putc('\n', mem_out);
+		j += 1;
+	}
+
+	fprintf(PCcount, "%d", count);
+
+	for (i = 0; i <= 15; i++) {
+		sprintf(regoutchar, "%08X", Reg_Array[i]);
+		fputs(regoutchar, regout);
+		putc('\n', regout);
+	}
+}
+
+int main(int argc, char *argv[]) {
+	int Reg_Array[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, i = 0;//CHANGE do we need also hardware Reg?
+	int *rege = Reg_Array, rd, rs, rt, pc_help, pc = 0, count = 0;
+	FILE *file, *mem_out, *PCcount, *regout, *trace;
+	char *line, Lines[MAX_LINE], opcode, immediate_char[4], c, output[65536][9], (*out)[9] = output;//CHANGE opcode\imm\output\count 
+	file = fopen(argv[2], "r"); //input file opening - CHANGE number of arguments
+	trace = fopen(argv[5], "w");//trace file opening
+	if (file == NULL)
+		exit(1);
+	line = Lines;
+	while (!feof(file)) { //first reading of the file - place input file lines into array
+		fgets(line, MAX_LINE, file);
+		strcpy(output[i], line);
+		output[i][8] = '\0';//we work with lines of 8 hexa digits
+		i += 1;
+	}
+	i += 1;
+	while (i < MAX_FILE) { // continuing masking the rest of lines with zeroes until limit
+		strcpy(output[i - 1], "00000000\0");
+		i += 1;
+	}
+	fseek(file, 0, SEEK_SET);//setting the file pointer back at the start of the file
+	while (!feof(file)) { // second reading of the file - reading input file line by line and process it -fetch+decode stage
+		fgets(line, MAX_LINE, file);
+		opcode = StrTol(line[0]);//CHANGE diffrent isa,StrTol take the hex digit and return decimal value
+		rd = StrTol(line[1]);//line[0],[1],[2],[3] are 1digit hexa-->opcode\rege
+		rs = StrTol(line[2]);
+		rt = StrTol(line[3]);
+		strncpy(immediate_char, line + 4, 4);//taking the rest of line 4digit hexa-->imm
+		if (opcode != 15) {//if opcode doesnt say Halt
+			Print_To_Trace(trace, pc, line, Reg_Array);//print to trace happens before execute
+			pc = Opcode_Operation(opcode, rd, rs, rt, immediate_char, rege, pc, file, out); //instruction execution function
+			fseek(file, 0, SEEK_SET); //Didnt get this part yet(five lines made for reading the correct line for next instruction)
+			pc_help = pc;
+			while (pc_help > 0) {
+				fgets(line, MAX_LINE, file);
+				pc_help -= 1;
+			}
+			count += 1; //CHANGE (COUNT= CYCLES).instructions count to be printed into "count.txt"
+		}
+		else {//if opcode was halt we dont execute anymore
+			Print_To_Trace(trace, pc, line, Reg_Array);
+			count += 1;
+			break;
+		}
+	}
+	//opening output files and printing to them
+	mem_out = fopen(argv[3], "w");
+	regout = fopen(argv[4], "w");
+	PCcount = fopen(argv[6], "w");
+	Print_To_Files(mem_out, regout, trace, PCcount, output, count, Reg_Array); //print to files function exept trace
+	fclose(file);
+	fclose(mem_out);
+	fclose(regout);
+	fclose(trace);
+	fclose(PCcount);
+}
